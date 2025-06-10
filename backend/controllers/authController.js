@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/User'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -6,43 +6,44 @@ const path = require('path');
 const fs = require('fs');
 const transporter = require('../utils/mailer');
 
-const clientUrl = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
-
 exports.register = async (req, res) => {
-  const { username, email, password } = req.body;
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-
-    const newUser = await User.create({
-      username,
-      email,
-      password: hashed,
-      verificationToken,
-      isVerified: false
-    });
-
-    const verifyLink = `${clientUrl}/verify-email?token=${verificationToken}&email=${email}`;
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Verifica il tuo indirizzo email',
-      html: `<p>Clicca il link per verificare il tuo account:</p><a href="${verifyLink}">${verifyLink}</a>`
-    });
-
-    res.status(201).json({
-      message: 'Registrazione completata. Controlla la tua email per la verifica.',
-      userId: newUser._id
-    });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json({ error: 'Email o username già in uso' });
+    const { username, email, password } = req.body;
+    try {
+      const hashed = await bcrypt.hash(password, 10);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+  
+      const newUser = await User.create({
+        username,
+        email,
+        password: hashed,
+        verificationToken,
+        isVerified: false
+      });
+  
+      const frontendBaseUrl = process.env.CLIENT_ORIGIN || 'http://localhost:3000'; // Usa la stessa variabile d'ambiente
+      // Se il tuo frontend gestisce il link di verifica come /reset/verify-email,
+      // modifica la riga seguente a: `${frontendBaseUrl}/reset/verify-email?token=${verificationToken}&email=${email}`;
+      const verifyLink = `${frontendBaseUrl}/verify-email?token=${verificationToken}&email=${email}`; // ✅ CORRETTO per /verify-email
+  
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Verifica il tuo indirizzo email',
+        html: `<p>Clicca il link per verificare il tuo account:</p><a href="${verifyLink}">${verifyLink}</a>`
+      });
+  
+      res.status(201).json({
+        message: 'Registrazione completata. Controlla la tua email per la verifica.',
+        userId: newUser._id
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(400).json({ error: 'Email o username già in uso' });
+      }
+      console.error('❌ Errore nella registrazione:', err);
+      res.status(500).json({ error: 'Registration failed' });
     }
-    console.error('❌ Errore nella registrazione:', err);
-    res.status(500).json({ error: 'Registration failed' });
-  }
-};
+  };
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -84,6 +85,7 @@ exports.verifyEmail = async (req, res) => {
       return res.status(400).json({ error: 'Utente non trovato' });
     }
 
+    // ⚠️ Prima controllo token, poi eventuale verifica già avvenuta
     if (!user.verificationToken || user.verificationToken !== token) {
       return res.status(400).json({ error: 'Token non valido o scaduto' });
     }
@@ -103,31 +105,33 @@ exports.verifyEmail = async (req, res) => {
 };
 
 exports.requestPasswordReset = async (req, res) => {
-  const { email } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Utente non trovato' });
-
-    const token = crypto.randomBytes(32).toString('hex');
-    user.resetToken = token;
-    user.resetExpires = Date.now() + 3600000; // 1 ora
-    await user.save();
-
-    const link = `${clientUrl}/reset-password?token=${token}&email=${email}`;
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Reset password',
-      html: `<p>Clicca il link per resettare la tua password:</p><a href="${link}">${link}</a>`
-    });
-
-    res.json({ message: 'Email per il reset inviata' });
-  } catch (err) {
-    console.error('❌ Errore richiesta reset:', err);
-    res.status(500).json({ error: 'Errore durante la richiesta reset' });
-  }
-};
+    const { email } = req.body;
+    try {
+      const user = await User.findOne({ email });
+      if (!user) return res.status(400).json({ error: 'Utente non trovato' });
+  
+      const token = crypto.randomBytes(32).toString('hex');
+      user.resetToken = token;
+      user.resetExpires = Date.now() + 3600000; // 1 ora
+      await user.save();
+  
+      // ✅ Modificato per includere /reset/
+      const frontendBaseUrl = process.env.CLIENT_ORIGIN || 'http://localhost:3000'; // Fallback per lo sviluppo locale
+      const link = `${frontendBaseUrl}/reset/reset-password?token=${token}&email=${email}`; 
+  
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Reset password',
+        html: `<p>Clicca il link per resettare la tua password:</p><a href="${link}">${link}</a>`
+      });
+  
+      res.json({ message: 'Email per il reset inviata' });
+    } catch (err) {
+      console.error('❌ Errore richiesta reset:', err);
+      res.status(500).json({ error: 'Errore durante la richiesta reset' });
+    }
+  };
 
 exports.resetPassword = async (req, res) => {
   const { email, token, newPassword } = req.body;
@@ -182,8 +186,3 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ error: 'Errore server durante aggiornamento profilo' });
   }
 };
-
-
-
-
-
