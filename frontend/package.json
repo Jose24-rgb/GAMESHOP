@@ -20,7 +20,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "coverage": "react-scripts test --coverage",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "postinstall": "chmod +x ./node_modules/.bin/react-scripts"
   },
   "eslintConfig": {
     "extends": [
@@ -44,5 +45,9 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
   }
 }
