@@ -23,9 +23,12 @@ const UserMenu = ({ avatarLetter, menuOpen, setMenuOpen, user, handleLogout, id,
 
   const renderAvatar = () => {
     if (user?.profilePic) {
+      
+      
+      const backendBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       return (
         <img
-          src={`http://localhost:5000${user.profilePic}?t=${Date.now()}`}
+          src={`${backendBaseUrl}${user.profilePic}?t=${Date.now()}`}
           alt="Profilo"
           style={{
             width: '40px',
@@ -56,7 +59,7 @@ const UserMenu = ({ avatarLetter, menuOpen, setMenuOpen, user, handleLogout, id,
     } else {
       return (
         <img
-          src="/icone/User Icona.png"
+          src="/icone/User Icona.png" 
           alt="Icona utente"
           style={{
             width: '40px',
